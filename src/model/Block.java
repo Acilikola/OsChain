@@ -1,21 +1,28 @@
 package model;
 
+import java.util.ArrayList;
 import java.util.Date;
 
 import util.StringUtil;
+
+/*
+ We should replace the useless data we had in our blocks with an ArrayList of transactions. 
+ However there may be 1000s of transactions in a single block, too many to include in our hash calculation… 
+ but don’t worry we can use the merkle root of the transactions 
+ */
 
 public class Block {
 
 	public String hash; // holds our digital signature
 	public String prevHash; // holds previous block's hash
 
-	private String data; // data is a simple message for this example project
-	private long timestamp; // as number of milliseconds since 1/1/1970
-	private int nonce;
+	public String merkleRoot;
+	public ArrayList<Transaction> transactions = new ArrayList<Transaction>();
+	public long timestamp; // as number of milliseconds since 1/1/1970
+	public int nonce;
 
 	// Constructor
-	public Block(String data, String prevHash) {
-		this.data = data;
+	public Block(String prevHash) {
 		this.prevHash = prevHash;
 		this.timestamp = new Date().getTime();
 
@@ -24,10 +31,9 @@ public class Block {
 
 	public String calculateHash() {
 		String calculatedHash = StringUtil.encode(
-				prevHash + 
 				Long.toString(timestamp) + 
 				Integer.toString(nonce) + 
-				data);
+				merkleRoot);
 		return calculatedHash;
 	}
 	
@@ -42,6 +48,7 @@ public class Block {
 	 * @param difficulty
 	 */
 	public void mineBlock(int difficulty) {
+		merkleRoot = StringUtil.getMerkleRoot(transactions);
 		// Create a string with difficulty * "0"s
 		String target = StringUtil.generateHashTarget(difficulty);
 		while(!hash.substring(0, difficulty).equals(target)) {
@@ -49,5 +56,22 @@ public class Block {
 			hash = calculateHash();
 		}
 		System.out.println("Block Mined!!! : " + hash);
+	}
+	
+	
+	public boolean addTransaction(Transaction transaction) {
+		// process transaction and check if valid, unless block is genesis block then ignore
+		if(transaction == null) return false;
+		
+		if(prevHash != "0") {
+			if(transaction.processTransaction() != true) {
+				System.out.println("Transaction failed to process. Discarded.");
+				return false;
+			}
+		}
+		
+		transactions.add(transaction);
+		System.out.println("Transaction successfully added to Block");
+		return true;
 	}
 }
